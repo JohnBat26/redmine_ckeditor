@@ -1,4 +1,4 @@
-source 'https://rubygems.org'
+# source 'https://rubygems.org'
 
 gem 'rich', '1.4.6'
 gem 'kaminari'
