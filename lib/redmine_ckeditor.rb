@@ -68,6 +68,23 @@ module RedmineCkeditor
         :selected => RedmineCkeditorSetting.toolbar_location)
     end
 
+    def ckeditor_config
+      @ckeditor_config ||= begin
+        conf = {
+          :extraPlugins => plugins.join(","),
+          :allowedContent => true,
+          :bodyClass => "wiki",
+          :basicEntities => false,
+          :entities => false,
+          :removePlugins => 'div,flash,forms,iframe',
+          :forcePasteAsPlainText => false
+        }
+        file = Rails.root.join("config/ckeditor.yml")
+        conf.merge!(YAML.load_file(file).symbolize_keys) if file.exist?
+        conf
+      end
+    end
+
     def options(scope_object = nil)
       scope_type = scope_object && scope_object.class.model_name
       scope_id = scope_object && scope_object.id
@@ -75,18 +92,19 @@ module RedmineCkeditor
       skin = RedmineCkeditorSetting.skin
       skin += ",#{assets_root}/ckeditor-contrib/skins/#{skin}/" if skin != "moono"
 
-      o = Rich.options({
-        :allowedContent => true,
+      rich_options = Rich.options({
+        :contentsCss => [stylesheet_path("application"), "#{assets_root}/stylesheets/editor.css"],
+        :scoped => scope_object ? true : false,
         :allow_document_uploads => true,
         :allow_embeds => true,
         :default_style => :original,
-        :richBrowserUrl => "#{Redmine::Utils.relative_url_root}/rich/files/",
-        :contentsCss => [stylesheet_path("application"), "#{assets_root}/stylesheets/editor.css"],
-        :bodyClass => "wiki",
-        :extraPlugins => plugins.join(","),
-        :removePlugins => 'div,flash,forms,iframe',
+        :richBrowserUrl => "#{Redmine::Utils.relative_url_root}/rich/files/"
+      }, scope_type, scope_id)
+      rich_options.delete(:removeDialogTabs)
+      rich_options.delete(:format_tags)
+      rich_options.delete(:stylesSet)
+      rich_options.merge(ckeditor_config.merge({
         :skin => skin,
-        :forcePasteAsPlainText => false,
         :uiColor => RedmineCkeditorSetting.ui_color,
         :enterMode => RedmineCkeditorSetting.enter_mode,
         :shiftEnterMode => RedmineCkeditorSetting.shift_enter_mode,
@@ -95,14 +113,9 @@ module RedmineCkeditor
         :toolbarStartupExpanded => !RedmineCkeditorSetting.toolbar_can_collapse,
         :toolbarLocation => RedmineCkeditorSetting.toolbar_location,
         :toolbar => RedmineCkeditorSetting.toolbar,
-        :scoped => scope_object ? true : false,
         :width => RedmineCkeditorSetting.width,
         :height => RedmineCkeditorSetting.height
-      }, scope_type, scope_id)
-      o.delete(:removeDialogTabs)
-      o.delete(:format_tags)
-      o.delete(:stylesSet)
-      o
+      }))
     end
 
     def enabled?
